@@ -5,8 +5,7 @@
 // @match        *://*/*
 // @exclude      *://developers.openai.com/*
 // @run-at       document-start
-// @grant        GM_xmlhttpRequest
-// @connect      fonts.googleapis.com
+// @grant        none
 // @icon         data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+CiAgPHRleHQKICAgIHg9IjEyOCIKICAgIHk9IjEyOCIKICAgIHRleHQtYW5jaG9yPSJtaWRkbGUiCiAgICBkb21pbmFudC1iYXNlbGluZT0iY2VudHJhbCIKICAgIGZvbnQtc2l6ZT0iMjAwIgogICAgZm9udC1mYW1pbHk9IkFyaWFsLCBIZWx2ZXRpY2EsIHNhbnMtc2VyaWYiCiAgICBmb250LXdlaWdodD0iNDAwIgogICAgZmlsbD0iIzAwMDAwMCI+UzwvdGV4dD4KPC9zdmc+
 // ==/UserScript==
 
@@ -291,125 +290,6 @@
     return renamed;
   }
 
-  function resolveGMRequestImpl() {
-    if (typeof GM_xmlhttpRequest === "function") {
-      return GM_xmlhttpRequest;
-    }
-    if (typeof GM !== "undefined" && GM && typeof GM.xmlHttpRequest === "function") {
-      return GM.xmlHttpRequest.bind(GM);
-    }
-    return null;
-  }
-
-  function createGMUnsupportedError(message) {
-    const error = new Error(message || "GM request API unavailable in current userscript manager.");
-    error.name = "GMTransportUnsupportedError";
-    return error;
-  }
-
-  function isGMUnsupportedError(error) {
-    return error instanceof Error && error.name === "GMTransportUnsupportedError";
-  }
-
-  async function fetchTextViaGM(url) {
-    const gmRequest = resolveGMRequestImpl();
-    if (!gmRequest) {
-      throw createGMUnsupportedError("GM_xmlhttpRequest / GM.xmlHttpRequest is not available.");
-    }
-
-    return new Promise((resolve, reject) => {
-      let settled = false;
-
-      const resolveOnce = (value) => {
-        if (settled) return;
-        settled = true;
-        resolve(value);
-      };
-
-      const rejectOnce = (error) => {
-        if (settled) return;
-        settled = true;
-        reject(error);
-      };
-
-      const requestDetails = {
-        method: "GET",
-        url,
-        onload: (response) => {
-          const status = Number(response && response.status) || 0;
-          const bodyText = typeof response?.responseText === "string"
-            ? response.responseText
-            : String(response?.responseText || "");
-          if (status < 200 || status >= 300) {
-            rejectOnce(new Error(`HTTP ${status}: ${bodyText.slice(0, 300)}`));
-            return;
-          }
-          resolveOnce(bodyText);
-        },
-        onerror: (response) => {
-          const hint = response?.error || response?.statusText || "unknown error";
-          rejectOnce(new Error(`GM request failed: ${hint}`));
-        },
-        ontimeout: () => {
-          rejectOnce(new Error("GM request timeout"));
-        },
-        onabort: () => {
-          rejectOnce(new Error("GM request aborted"));
-        }
-      };
-
-      try {
-        const maybeHandle = gmRequest(requestDetails);
-        if (maybeHandle && typeof maybeHandle.then === "function") {
-          maybeHandle
-            .then((response) => {
-              const status = Number(response && response.status) || 0;
-              const bodyText = typeof response?.responseText === "string"
-                ? response.responseText
-                : String(response?.responseText || "");
-              if (status < 200 || status >= 300) {
-                rejectOnce(new Error(`HTTP ${status}: ${bodyText.slice(0, 300)}`));
-                return;
-              }
-              resolveOnce(bodyText);
-            })
-            .catch((error) => {
-              const message = error && error.message ? error.message : String(error);
-              rejectOnce(new Error(`GM request failed: ${message}`));
-            });
-        }
-      } catch (error) {
-        const message = error && error.message ? error.message : String(error);
-        rejectOnce(createGMUnsupportedError(`GM transport invocation failed: ${message}`));
-      }
-    });
-  }
-
-  async function fetchTextViaFetch(url) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    return response.text();
-  }
-
-  async function fetchStylesheetText(url) {
-    try {
-      const text = await fetchTextViaGM(url);
-      debugLog("stylesheet transport=gm", { url });
-      return text;
-    } catch (error) {
-      if (!isGMUnsupportedError(error)) {
-        throw error;
-      }
-      debugLog("stylesheet transport fallback=fetch", {
-        url,
-        reason: error && error.message ? error.message : String(error)
-      });
-      return fetchTextViaFetch(url);
-    }
-  }
-
   async function ensureFontPackLoaded(packKey) {
     const pack = FONT_PACKS[packKey];
     if (!pack) return "";
@@ -417,7 +297,13 @@
     if (pack.promise) return pack.promise;
 
     pack.state = "loading";
-    pack.promise = fetchStylesheetText(pack.stylesheetUrl)
+    pack.promise = fetch(pack.stylesheetUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.text();
+      })
       .then(cssText => {
         const absoluteCSS = ensureAbsoluteFontURLs(cssText, pack.stylesheetUrl);
         const extractedCSS = extractFontFaceCSS(absoluteCSS, pack.sourceFamilies);
