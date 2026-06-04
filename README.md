@@ -110,3 +110,7 @@
 
 3. 个别图标变方块
 图标字体被误替换时，可把对应字体名加入 `EXCLUDE_FONTS`。
+
+## License
+
+本项目基于 GNU General Public License v3.0 or later（GPL-3.0-or-later）发布，详见 `LICENSE`。
