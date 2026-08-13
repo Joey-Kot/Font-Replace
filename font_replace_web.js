@@ -3,9 +3,11 @@
 // @description  Immersive global font replacement
 // @copyright    2026 Joey Kot <joey.kot.x@gmail.com>
 // @license      GPL-3.0-or-later
-// @version      2026-03-18
+// @version      2026-08-13
 // @match        *://*/*
 // @exclude      *://developers.openai.com/*
+// @exclude      *://cloudflare.com/*
+// @exclude      *://*.cloudflare.com/*
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
 // @connect      fonts.googleapis.com
@@ -24,6 +26,11 @@
 // See <https://www.gnu.org/licenses/> for more details.
 
 (function () {
+  const hostname = location.hostname.toLowerCase();
+  if (hostname === "cloudflare.com" || hostname.endsWith(".cloudflare.com")) {
+    return;
+  }
+
   const STYLE_ID = "customFont";
 
   // Runtime stylesheets used to load the latest online font rules.

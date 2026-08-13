@@ -3,9 +3,11 @@
 // @description  Immersive global font replacement
 // @copyright    2026 Joey Kot <joey.kot.x@gmail.com>
 // @license      GPL-3.0-or-later
-// @version      2026-03-18
+// @version      2026-08-13
 // @match        *://*/*
 // @exclude      *://developers.openai.com/*
+// @exclude      *://cloudflare.com/*
+// @exclude      *://*.cloudflare.com/*
 // @run-at       document-start
 // @grant        none
 // @icon         data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+CiAgPHRleHQKICAgIHg9IjEyOCIKICAgIHk9IjEyOCIKICAgIHRleHQtYW5jaG9yPSJtaWRkbGUiCiAgICBkb21pbmFudC1iYXNlbGluZT0iY2VudHJhbCIKICAgIGZvbnQtc2l6ZT0iMjAwIgogICAgZm9udC1mYW1pbHk9IkFyaWFsLCBIZWx2ZXRpY2EsIHNhbnMtc2VyaWYiCiAgICBmb250LXdlaWdodD0iNDAwIgogICAgZmlsbD0iIzAwMDAwMCI+UzwvdGV4dD4KPC9zdmc+
@@ -23,6 +25,11 @@
 // See <https://www.gnu.org/licenses/> for more details.
 
 (function () {
+  const hostname = location.hostname.toLowerCase();
+  if (hostname === "cloudflare.com" || hostname.endsWith(".cloudflare.com")) {
+    return;
+  }
+
   const STYLE_ID = "customFont";
 
   // Font source lists used by the generated @font-face overrides.
